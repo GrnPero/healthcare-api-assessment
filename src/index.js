@@ -12,24 +12,36 @@ const high_risk_patients = new Set();
 const fever_patients = new Set();
 const data_quality_issues = new Set();
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const getPatients = async (page = 1, limit = 20) => {
   let hasNext = true;
   while (hasNext) {
-    try {
-      const response = await axios.get(API_URL + '/patients', {
-        params: { page, limit },
-        headers: {
-          'x-api-key': API_KEY,
-        },
-      });
+    const response = await axios.get(API_URL + '/patients', {
+      params: { page, limit },
+      headers: {
+        'x-api-key': API_KEY,
+      },
+    });
 
-      hasNext = response.data.pagination.hasNext;
+    if (response.status === 429) {
+      await sleep(2000);
+      continue;
+    }
 
-      data.push(...response.data.data);
+    if (response.status === 500 || response.status === 503) {
+      await sleep(2000);
+      continue;
+    }
 
-      page++;
-      sleep(10);
-    } catch (e) {}
+    hasNext = response.data.pagination?.hasNext;
+
+    data.push(...response.data.data);
+
+    page++;
+    await sleep(1000);
   }
 
   return data;
@@ -129,7 +141,28 @@ const highRiskPatients = (data) => {
 getPatients().then((data) => {
   highRiskPatients(data);
 
-  console.log(high_risk_patients);
-  console.log(fever_patients);
-  console.log(data_quality_issues);
+  submitResults();
 });
+
+const submitResults = async () => {
+  try {
+    const response = await axios.post(
+      API_URL + '/submit-assessment',
+      {
+        high_risk_patients: Array.from(high_risk_patients),
+        fever_patients: Array.from(fever_patients),
+        data_quality_issues: Array.from(data_quality_issues),
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        },
+      }
+    );
+
+    console.log('Submission response:', response.data);
+  } catch (error) {
+    console.error('Submission failed:', error.response?.data || error.message);
+  }
+};
