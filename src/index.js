@@ -28,12 +28,12 @@ const getPatients = async (page = 1, limit = 20) => {
 
     if (response.status === 429) {
       await sleep(2000);
-      continue;
+      getPatients(page, limit);
     }
 
     if (response.status === 500 || response.status === 503) {
       await sleep(2000);
-      continue;
+      getPatients(page, limit);
     }
 
     hasNext = response.data.pagination?.hasNext;
