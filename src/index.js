@@ -6,17 +6,23 @@ dotenv.config();
 const API_URL = process.env.BASE_URL;
 const API_KEY = process.env.API_KEY;
 
-async function fetchPatients(page = 1, limit = 10) {
-  const response = await axios.get(API_URL + '/patients', {
-    params: { page, limit },
-    headers: {
-      'x-api-key': API_KEY,
-    },
-  });
+const getPatients = async (page = 1, limit = 20) => {
+  let data = [];
+  let hasNext = true;
+  while (hasNext) {
+    const response = await axios.get(API_URL + '/patients', {
+      params: { page, limit },
+      headers: {
+        'x-api-key': API_KEY,
+      },
+    });
 
-  return response.data;
-}
+    hasNext = response.data.hasNext;
 
-fetchPatients().then((data) => {
-  console.log('Patients:', data);
-});
+    data.push(response.data.data);
+  }
+
+  return data;
+};
+
+getPatients().then((data) => console.log(data));
